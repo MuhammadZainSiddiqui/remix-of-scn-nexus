@@ -1,0 +1,175 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+
+@layer base {
+  :root {
+    --background: 0 0% 99%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 215 25% 27%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 20% 96%;
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 210 15% 95%;
+    --muted-foreground: 215 16% 47%;
+
+    --accent: 210 100% 52%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 20% 91%;
+    --input: 214 20% 91%;
+    --ring: 215 25% 27%;
+
+    --radius: 0.5rem;
+
+    /* Institutional Colors */
+    --institutional-blue: 215 100% 50%;
+    --institutional-navy: 215 45% 20%;
+    
+    /* Status Colors */
+    --status-active: 142 76% 36%;
+    --status-pending: 38 92% 50%;
+    --status-restricted: 0 72% 51%;
+    --status-exception: 280 60% 50%;
+    --status-approved: 142 76% 36%;
+    --status-overdue: 0 72% 51%;
+    
+    /* Risk Levels */
+    --risk-tier1: 0 84% 60%;
+    --risk-tier2: 25 95% 53%;
+    --risk-tier3: 45 93% 47%;
+    
+    /* Sidebar */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 215 25% 27%;
+    --sidebar-primary: 215 25% 27%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 210 20% 96%;
+    --sidebar-accent-foreground: 215 25% 27%;
+    --sidebar-border: 214 20% 91%;
+    --sidebar-ring: 215 25% 27%;
+  }
+
+  .dark {
+    --background: 222 47% 6%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 8%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 8%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 210 40% 98%;
+    --primary-foreground: 222 47% 11%;
+
+    --secondary: 217 33% 17%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --accent: 210 100% 52%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 62% 30%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 212 27% 84%;
+    
+    --sidebar-background: 222 47% 6%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 210 40% 98%;
+    --sidebar-primary-foreground: 222 47% 11%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 17%;
+    --sidebar-ring: 212 27% 84%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+}
+
+@layer components {
+  .institutional-card {
+    @apply bg-card border border-border rounded-lg shadow-sm;
+  }
+  
+  .status-pill {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+  
+  .status-active {
+    @apply bg-emerald-50 text-emerald-700 border border-emerald-200;
+  }
+  
+  .status-pending {
+    @apply bg-amber-50 text-amber-700 border border-amber-200;
+  }
+  
+  .status-restricted {
+    @apply bg-red-50 text-red-700 border border-red-200;
+  }
+  
+  .status-approved {
+    @apply bg-emerald-50 text-emerald-700 border border-emerald-200;
+  }
+  
+  .status-overdue {
+    @apply bg-red-50 text-red-700 border border-red-200;
+  }
+  
+  .status-exception {
+    @apply bg-purple-50 text-purple-700 border border-purple-200;
+  }
+  
+  .risk-tier1 {
+    @apply bg-red-500 text-white;
+  }
+  
+  .risk-tier2 {
+    @apply bg-orange-500 text-white;
+  }
+  
+  .risk-tier3 {
+    @apply bg-yellow-500 text-yellow-900;
+  }
+  
+  .nav-link {
+    @apply flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-md transition-colors;
+    @apply text-muted-foreground hover:bg-muted hover:text-foreground;
+  }
+  
+  .nav-link-active {
+    @apply bg-primary/10 text-primary;
+  }
+  
+  .section-header {
+    @apply text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2 px-3;
+  }
+}
