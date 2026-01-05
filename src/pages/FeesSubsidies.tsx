@@ -23,16 +23,66 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Search, Plus, Receipt, FileText, CheckCircle, Clock, AlertCircle } from 'lucide-react';
-import { feePlans, waiverRequests } from '@/lib/mockData';
+import { Search, Plus, FileText, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import {
+  useFeePlans,
+  useInvoices,
+  useWaiverRequests,
+  useCreateWaiverRequest,
+} from '@/hooks/useFees';
+import { LoadingSpinner, LoadingTable } from '@/components/shared/LoadingSpinner';
+import { ErrorAlert } from '@/components/shared/ErrorAlert';
+import { Pagination } from '@/components/shared/Pagination';
 import { useToast } from '@/hooks/use-toast';
 
 export default function FeesSubsidies() {
   const [searchQuery, setSearchQuery] = useState('');
   const [waiverReason, setWaiverReason] = useState('');
+  const [page, setPage] = useState(1);
   const { toast } = useToast();
 
-  const handleApproveWaiver = (id: number) => {
+  const { data: feePlansData, isLoading: feePlansLoading, error: feePlansError } = useFeePlans(
+    { search: searchQuery },
+    page,
+    20
+  );
+
+  const { data: invoicesData, isLoading: invoicesLoading, error: invoicesError } = useInvoices(
+    { search: searchQuery },
+    page,
+    10
+  );
+
+  const { data: waiversData, isLoading: waiversLoading, error: waiversError } = useWaiverRequests(
+    { search: searchQuery },
+    page,
+    10
+  );
+
+  const createWaiverMutation = useCreateWaiverRequest();
+
+  const handleCreateWaiver = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+
+    try {
+      await createWaiverMutation.mutateAsync({
+        beneficiary_id: formData.get('beneficiary_id') as string,
+        fee_plan_id: formData.get('fee_plan_id') as string,
+        requested_amount: parseFloat(formData.get('amount') as string),
+        reason: formData.get('reason') as string,
+      });
+      setWaiverReason('');
+      toast({
+        title: "Waiver Requested",
+        description: "Your waiver request has been submitted for approval.",
+      });
+    } catch (error) {
+      // Error handled in hook
+    }
+  };
+
+  const handleApproveWaiver = (id: string) => {
     toast({
       title: "Waiver Approved",
       description: "Fee waiver has been approved. Audit log entry created.",
@@ -70,38 +120,49 @@ export default function FeesSubsidies() {
 
         {/* Fee Plans */}
         <TabsContent value="plans">
-          <div className="grid grid-cols-2 gap-4">
-            {feePlans.map((plan) => (
-              <Card key={plan.id}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">{plan.name}</CardTitle>
-                    <Badge variant="outline">{plan.vertical}</Badge>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="p-3 rounded-lg bg-muted/50 text-center">
-                      <p className="text-lg font-semibold">PKR {plan.monthlyFee.toLocaleString()}</p>
-                      <p className="text-xs text-muted-foreground">Monthly Fee</p>
+          {feePlansError && <ErrorAlert error={feePlansError} title="Failed to load fee plans" />}
+          {feePlansLoading ? (
+            <LoadingSpinner />
+          ) : feePlansData?.data && feePlansData.data.length > 0 ? (
+            <div className="grid grid-cols-2 gap-4">
+              {feePlansData.data.map((plan) => (
+                <Card key={plan.id}>
+                  <CardHeader className="pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base">{plan.name}</CardTitle>
+                      <Badge variant="outline">{plan.vertical_name}</Badge>
                     </div>
-                    <div className="p-3 rounded-lg bg-muted/50 text-center">
-                      <p className="text-lg font-semibold">{plan.enrolledCount}</p>
-                      <p className="text-xs text-muted-foreground">Enrolled</p>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="p-3 rounded-lg bg-muted/50 text-center">
+                        <p className="text-lg font-semibold">PKR {plan.monthly_fee.toLocaleString()}</p>
+                        <p className="text-xs text-muted-foreground">Monthly Fee</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/50 text-center">
+                        <p className="text-lg font-semibold">{plan.enrolled_count}</p>
+                        <p className="text-xs text-muted-foreground">Enrolled</p>
+                      </div>
+                      <div className="p-3 rounded-lg bg-muted/50 text-center">
+                        <p className="text-lg font-semibold">{plan.waiver_count}</p>
+                        <p className="text-xs text-muted-foreground">Waivers</p>
+                      </div>
                     </div>
-                    <div className="p-3 rounded-lg bg-muted/50 text-center">
-                      <p className="text-lg font-semibold">{plan.waiverCount}</p>
-                      <p className="text-xs text-muted-foreground">Waivers</p>
+                    <div className="mt-4 flex gap-2">
+                      <Button variant="outline" size="sm" className="flex-1">Edit Plan</Button>
+                      <Button size="sm" className="flex-1">View Details</Button>
                     </div>
-                  </div>
-                  <div className="mt-4 flex gap-2">
-                    <Button variant="outline" size="sm" className="flex-1">Edit Plan</Button>
-                    <Button size="sm" className="flex-1">View Details</Button>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12 text-center">
+              <FileText className="w-12 h-12 text-muted-foreground/30 mb-4" />
+              <h3 className="text-lg font-medium text-foreground mb-1">No fee plans found</h3>
+              <p className="text-sm text-muted-foreground max-w-sm">Add your first fee plan to get started</p>
+            </div>
+          )}
         </TabsContent>
 
         {/* Invoices */}
@@ -274,53 +335,74 @@ export default function FeesSubsidies() {
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Beneficiary</TableHead>
-                    <TableHead>Fee Plan</TableHead>
-                    <TableHead>Amount</TableHead>
-                    <TableHead>Reason</TableHead>
-                    <TableHead>Requested By</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {waiverRequests.map((waiver) => (
-                    <TableRow key={waiver.id}>
-                      <TableCell className="font-medium">{waiver.beneficiary}</TableCell>
-                      <TableCell>{waiver.feePlan}</TableCell>
-                      <TableCell>PKR {waiver.requestedAmount.toLocaleString()}</TableCell>
-                      <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
-                        {waiver.reason}
-                      </TableCell>
-                      <TableCell className="text-sm">{waiver.requestedBy}</TableCell>
-                      <TableCell>
-                        <Badge className={
-                          waiver.status === 'Approved' ? 'status-approved' : 'status-pending'
-                        }>
-                          {waiver.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {waiver.status !== 'Approved' && (
-                          <div className="flex gap-1">
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handleApproveWaiver(waiver.id)}
-                            >
-                              Approve
-                            </Button>
-                            <Button size="sm" variant="ghost">Reject</Button>
-                          </div>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+              {waiversLoading ? (
+                <LoadingTable />
+              ) : waiversData?.data && waiversData.data.length > 0 ? (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Beneficiary</TableHead>
+                        <TableHead>Fee Plan</TableHead>
+                        <TableHead>Amount</TableHead>
+                        <TableHead>Reason</TableHead>
+                        <TableHead>Requested By</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {waiversData.data.map((waiver) => (
+                        <TableRow key={waiver.id}>
+                          <TableCell className="font-medium">{waiver.beneficiary_name}</TableCell>
+                          <TableCell>{waiver.fee_plan_name}</TableCell>
+                          <TableCell>PKR {waiver.requested_amount.toLocaleString()}</TableCell>
+                          <TableCell className="max-w-xs truncate text-sm text-muted-foreground">
+                            {waiver.reason}
+                          </TableCell>
+                          <TableCell className="text-sm">{waiver.requested_by_name}</TableCell>
+                          <TableCell>
+                            <Badge className={
+                              waiver.status === 'approved' ? 'status-approved' : 'status-pending'
+                            }>
+                              {waiver.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {waiver.status !== 'approved' && (
+                              <div className="flex gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  onClick={() => handleApproveWaiver(waiver.id)}
+                                >
+                                  Approve
+                                </Button>
+                                <Button size="sm" variant="ghost">Reject</Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <Pagination
+                    page={page}
+                    totalPages={waiversData.pagination.totalPages}
+                    total={waiversData.pagination.total}
+                    onPageChange={setPage}
+                    className="mt-4"
+                  />
+                </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <AlertCircle className="w-12 h-12 text-muted-foreground/30 mb-4" />
+                  <h3 className="text-lg font-medium text-foreground mb-1">No waiver requests found</h3>
+                  <p className="text-sm text-muted-foreground max-w-sm">
+                    {searchQuery ? "Try adjusting your search" : "No waiver requests at this time"}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
