@@ -21,7 +21,13 @@ import {
   SheetTrigger,
 } from '@/components/ui/sheet';
 import { Search, Plus, Building, User, Heart, Briefcase, HandHeart } from 'lucide-react';
-import { donors } from '@/lib/mockData';
+import { useApp } from '@/contexts/AppContext';
+import { useDonors, Contact } from '@/hooks/useContacts';
+import { LoadingSpinner, LoadingTable } from '@/components/shared/LoadingSpinner';
+import { ErrorAlert } from '@/components/shared/ErrorAlert';
+import { EmptyTable } from '@/components/shared/EmptyState';
+import { Pagination } from '@/components/shared/Pagination';
+import { useToast } from '@/hooks/use-toast';
 
 const volunteers = [
   { id: 1, name: 'Samina Yousuf', email: 'samina@email.com', vertical: 'Educare Academy', status: 'Active', hours: 156 },
@@ -46,7 +52,28 @@ const partners = [
 
 export default function Contacts() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedContact, setSelectedContact] = useState<any>(null);
+  const { currentVertical } = useApp();
+  const { toast } = useToast();
+
+  const [donorPage, setDonorPage] = useState(1);
+  const { data: donorsData, isLoading: donorsLoading, error: donorsError } = useDonors(
+    { search: searchQuery },
+    donorPage,
+    10
+  );
+
+  const handleViewContact = (contact: Contact) => {
+    setSelectedContact(contact);
+  };
+
+  const handleAddContact = () => {
+    toast({
+      title: "Add Contact",
+      description: "Opening contact form...",
+    });
+  };
+
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   return (
     <div className="space-y-6">
@@ -57,11 +84,15 @@ export default function Contacts() {
             Manage donors, parents, volunteers, vendors, and partners
           </p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={handleAddContact}>
           <Plus className="w-4 h-4" />
           Add Contact
         </Button>
       </div>
+
+      {donorsError && (
+        <ErrorAlert error={donorsError} title="Failed to load contacts" />
+      )}
 
       <Tabs defaultValue="donors" className="space-y-4">
         <TabsList className="bg-muted/50">
@@ -95,88 +126,100 @@ export default function Contacts() {
                 <CardTitle className="text-lg">Donors</CardTitle>
                 <div className="relative w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input placeholder="Search donors..." className="pl-9" />
+                  <Input
+                    placeholder="Search donors..."
+                    className="pl-9"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
               </div>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Type</TableHead>
-                    <TableHead>Total Donated</TableHead>
-                    <TableHead>Last Donation</TableHead>
-                    <TableHead>Contact Person</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {donors.map((donor) => (
-                    <TableRow key={donor.id}>
-                      <TableCell className="font-medium">{donor.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{donor.type}</Badge>
-                      </TableCell>
-                      <TableCell>PKR {donor.totalDonated.toLocaleString()}</TableCell>
-                      <TableCell className="text-muted-foreground">{donor.lastDonation}</TableCell>
-                      <TableCell>
-                        <div>
-                          <p className="text-sm">{donor.contactPerson}</p>
-                          <p className="text-xs text-muted-foreground">{donor.email}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className="status-active">{donor.status}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Sheet>
-                          <SheetTrigger asChild>
-                            <Button variant="ghost" size="sm">View</Button>
-                          </SheetTrigger>
-                          <SheetContent>
-                            <SheetHeader>
-                              <SheetTitle>{donor.name}</SheetTitle>
-                              <SheetDescription>Donor Profile & Interaction History</SheetDescription>
-                            </SheetHeader>
-                            <div className="mt-6 space-y-4">
-                              <div className="grid grid-cols-2 gap-4">
-                                <div className="p-3 rounded-lg bg-muted/50">
-                                  <p className="text-xs text-muted-foreground">Total Donated</p>
-                                  <p className="text-lg font-semibold">PKR {donor.totalDonated.toLocaleString()}</p>
-                                </div>
-                                <div className="p-3 rounded-lg bg-muted/50">
-                                  <p className="text-xs text-muted-foreground">Last Donation</p>
-                                  <p className="text-lg font-semibold">{donor.lastDonation}</p>
-                                </div>
-                              </div>
-                              <div className="border-t pt-4">
-                                <h4 className="font-medium mb-2">Contact Information</h4>
-                                <p className="text-sm">{donor.contactPerson}</p>
-                                <p className="text-sm text-muted-foreground">{donor.email}</p>
-                              </div>
-                              <div className="border-t pt-4">
-                                <h4 className="font-medium mb-2">Interaction History</h4>
-                                <div className="space-y-2">
-                                  <div className="p-2 rounded bg-muted/30 text-sm">
-                                    <p className="font-medium">Receipt Sent</p>
-                                    <p className="text-xs text-muted-foreground">Jan 10, 2024</p>
-                                  </div>
-                                  <div className="p-2 rounded bg-muted/30 text-sm">
-                                    <p className="font-medium">Donation Received</p>
-                                    <p className="text-xs text-muted-foreground">Jan 10, 2024</p>
-                                  </div>
-                                </div>
-                              </div>
+              {donorsLoading ? (
+                <LoadingTable />
+              ) : donorsData?.data && donorsData.data.length > 0 ? (
+                <>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Type</TableHead>
+                        <TableHead>Total Donated</TableHead>
+                        <TableHead>Last Donation</TableHead>
+                        <TableHead>Contact Person</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {donorsData.data.map((donor) => (
+                        <TableRow key={donor.id}>
+                          <TableCell className="font-medium">{donor.name}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline">{donor.contact_type || 'Individual'}</Badge>
+                          </TableCell>
+                          <TableCell>PKR {donor.total_donated?.toLocaleString() || '0'}</TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {donor.last_donation || 'N/A'}
+                          </TableCell>
+                          <TableCell>
+                            <div>
+                              <p className="text-sm">{donor.name}</p>
+                              <p className="text-xs text-muted-foreground">{donor.email}</p>
                             </div>
-                          </SheetContent>
-                        </Sheet>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                          </TableCell>
+                          <TableCell>
+                            <Badge className="status-active">{donor.status || 'Active'}</Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Sheet>
+                              <SheetTrigger asChild>
+                                <Button variant="ghost" size="sm">View</Button>
+                              </SheetTrigger>
+                              <SheetContent>
+                                <SheetHeader>
+                                  <SheetTitle>{donor.name}</SheetTitle>
+                                  <SheetDescription>Donor Profile & Interaction History</SheetDescription>
+                                </SheetHeader>
+                                <div className="mt-6 space-y-4">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="p-3 rounded-lg bg-muted/50">
+                                      <p className="text-xs text-muted-foreground">Total Donated</p>
+                                      <p className="text-lg font-semibold">PKR {donor.total_donated?.toLocaleString() || '0'}</p>
+                                    </div>
+                                    <div className="p-3 rounded-lg bg-muted/50">
+                                      <p className="text-xs text-muted-foreground">Last Donation</p>
+                                      <p className="text-lg font-semibold">{donor.last_donation || 'N/A'}</p>
+                                    </div>
+                                  </div>
+                                  <div className="border-t pt-4">
+                                    <h4 className="font-medium mb-2">Contact Information</h4>
+                                    <p className="text-sm">{donor.name}</p>
+                                    <p className="text-sm text-muted-foreground">{donor.email}</p>
+                                  </div>
+                                </div>
+                              </SheetContent>
+                            </Sheet>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                  <Pagination
+                    page={donorPage}
+                    totalPages={donorsData.pagination.totalPages}
+                    total={donorsData.pagination.total}
+                    onPageChange={setDonorPage}
+                    className="mt-4"
+                  />
+                </>
+              ) : (
+                <EmptyTable
+                  title="No donors found"
+                  description={searchQuery ? "Try adjusting your search" : "Add your first donor to get started"}
+                />
+              )}
             </CardContent>
           </Card>
         </TabsContent>
