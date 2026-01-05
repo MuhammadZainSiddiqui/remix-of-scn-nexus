@@ -13,15 +13,39 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Search, Plus, Heart, Shield, Clock, AlertTriangle, CheckCircle, Lock } from 'lucide-react';
-import { volunteers } from '@/lib/mockData';
+import { useVolunteers, useVolunteerStats, useCreateVolunteer, Volunteer } from '@/hooks/useVolunteers';
+import { LoadingSpinner, LoadingTable } from '@/components/shared/LoadingSpinner';
+import { ErrorAlert } from '@/components/shared/ErrorAlert';
+import { EmptyTable } from '@/components/shared/EmptyState';
+import { Pagination } from '@/components/shared/Pagination';
+import { useToast } from '@/hooks/use-toast';
 
 export default function Volunteers() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [page, setPage] = useState(1);
+  const { toast } = useToast();
 
-  const filteredVolunteers = volunteers.filter(v =>
-    v.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    v.vertical.toLowerCase().includes(searchQuery.toLowerCase())
+  const { data: volunteersData, isLoading: volunteersLoading, error: volunteersError } = useVolunteers(
+    { search: searchQuery },
+    page,
+    10
   );
+  const { data: stats } = useVolunteerStats();
+  const createVolunteerMutation = useCreateVolunteer();
+
+  const handleRegisterVolunteer = () => {
+    toast({
+      title: "Register Volunteer",
+      description: "Opening volunteer registration form...",
+    });
+  };
+
+  const volunteerStats = stats || {
+    total: 0,
+    fully_trained: 0,
+    total_hours: 0,
+    insurance_expired: 0,
+  };
 
   return (
     <div className="space-y-6">
@@ -32,11 +56,15 @@ export default function Volunteers() {
             Manage volunteer tiers, training, accreditation, and insurance
           </p>
         </div>
-        <Button className="gap-2">
+        <Button className="gap-2" onClick={handleRegisterVolunteer}>
           <Plus className="w-4 h-4" />
           Register Volunteer
         </Button>
       </div>
+
+      {volunteersError && (
+        <ErrorAlert error={volunteersError} title="Failed to load volunteers" />
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-4 gap-4">
@@ -47,7 +75,7 @@ export default function Volunteers() {
                 <Heart className="w-5 h-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-2xl font-semibold">{volunteers.length}</p>
+                <p className="text-2xl font-semibold">{volunteerStats.total}</p>
                 <p className="text-sm text-muted-foreground">Total Volunteers</p>
               </div>
             </div>
@@ -60,9 +88,7 @@ export default function Volunteers() {
                 <Shield className="w-5 h-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-2xl font-semibold">
-                  {volunteers.filter(v => v.trainingStatus === 'Complete').length}
-                </p>
+                <p className="text-2xl font-semibold">{volunteerStats.fully_trained}</p>
                 <p className="text-sm text-muted-foreground">Fully Trained</p>
               </div>
             </div>
@@ -75,9 +101,7 @@ export default function Volunteers() {
                 <Clock className="w-5 h-5 text-amber-600" />
               </div>
               <div>
-                <p className="text-2xl font-semibold">
-                  {volunteers.reduce((sum, v) => sum + v.hoursContributed, 0)}
-                </p>
+                <p className="text-2xl font-semibold">{volunteerStats.total_hours}</p>
                 <p className="text-sm text-muted-foreground">Total Hours</p>
               </div>
             </div>
@@ -90,9 +114,7 @@ export default function Volunteers() {
                 <AlertTriangle className="w-5 h-5 text-red-600" />
               </div>
               <div>
-                <p className="text-2xl font-semibold">
-                  {volunteers.filter(v => !v.insuranceValid).length}
-                </p>
+                <p className="text-2xl font-semibold">{volunteerStats.insurance_expired}</p>
                 <p className="text-sm text-muted-foreground">Insurance Expired</p>
               </div>
             </div>
@@ -101,7 +123,7 @@ export default function Volunteers() {
       </div>
 
       {/* Insurance Expiry Warning */}
-      {volunteers.some(v => !v.insuranceValid) && (
+      {volunteerStats.insurance_expired > 0 && (
         <Card className="border-red-200 bg-red-50">
           <CardContent className="py-4">
             <div className="flex items-center gap-3">
@@ -109,7 +131,7 @@ export default function Volunteers() {
               <div>
                 <p className="font-medium text-red-800">Auto-Lock Triggered</p>
                 <p className="text-sm text-red-600">
-                  {volunteers.filter(v => !v.insuranceValid).length} volunteer(s) have been auto-locked due to expired insurance. 
+                  {volunteerStats.insurance_expired} volunteer(s) have been auto-locked due to expired insurance. 
                   Access will be restored upon insurance renewal.
                 </p>
               </div>
@@ -173,74 +195,92 @@ export default function Volunteers() {
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Name</TableHead>
-                <TableHead>Tier</TableHead>
-                <TableHead>Vertical</TableHead>
-                <TableHead>Training</TableHead>
-                <TableHead>Accreditation</TableHead>
-                <TableHead>Insurance</TableHead>
-                <TableHead>Hours</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filteredVolunteers.map((volunteer) => (
-                <TableRow key={volunteer.id} className={!volunteer.insuranceValid ? 'bg-red-50/50' : ''}>
-                  <TableCell className="font-medium">{volunteer.name}</TableCell>
-                  <TableCell>
-                    <Badge className={
-                      volunteer.tier === 'Tier 1' ? 'bg-emerald-600' :
-                      volunteer.tier === 'Tier 2' ? 'bg-blue-600' : 'bg-slate-600'
-                    }>
-                      {volunteer.tier}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-sm">{volunteer.vertical}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {volunteer.trainingStatus === 'Complete' ? (
-                        <CheckCircle className="w-4 h-4 text-emerald-500" />
-                      ) : (
-                        <Clock className="w-4 h-4 text-amber-500" />
-                      )}
-                      <span className="text-sm">{volunteer.trainingStatus}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{volunteer.accreditation}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {volunteer.insuranceValid ? (
-                        <>
-                          <CheckCircle className="w-4 h-4 text-emerald-500" />
-                          <span className="text-xs text-muted-foreground">
-                            Exp: {volunteer.insuranceExpiry}
-                          </span>
-                        </>
-                      ) : (
-                        <>
-                          <AlertTriangle className="w-4 h-4 text-red-500" />
-                          <span className="text-xs text-red-600 font-medium">EXPIRED</span>
-                        </>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="font-medium">{volunteer.hoursContributed}</TableCell>
-                  <TableCell>
-                    <Badge className={
-                      volunteer.status === 'Active' ? 'status-active' : 'status-restricted'
-                    }>
-                      {volunteer.status}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          {volunteersLoading ? (
+            <LoadingTable />
+          ) : volunteersData?.data && volunteersData.data.length > 0 ? (
+            <>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Tier</TableHead>
+                    <TableHead>Vertical</TableHead>
+                    <TableHead>Training</TableHead>
+                    <TableHead>Accreditation</TableHead>
+                    <TableHead>Insurance</TableHead>
+                    <TableHead>Hours</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {volunteersData.data.map((volunteer) => (
+                    <TableRow key={volunteer.id} className={!volunteer.insurance_valid ? 'bg-red-50/50' : ''}>
+                      <TableCell className="font-medium">{volunteer.name}</TableCell>
+                      <TableCell>
+                        <Badge className={
+                          volunteer.tier === 'Tier 1' ? 'bg-emerald-600' :
+                          volunteer.tier === 'Tier 2' ? 'bg-blue-600' : 'bg-slate-600'
+                        }>
+                          {volunteer.tier}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm">{volunteer.vertical_name}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {volunteer.training_status === 'complete' ? (
+                            <CheckCircle className="w-4 h-4 text-emerald-500" />
+                          ) : (
+                            <Clock className="w-4 h-4 text-amber-500" />
+                          )}
+                          <span className="text-sm capitalize">{volunteer.training_status?.replace('_', ' ')}</span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{volunteer.accreditation || 'N/A'}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          {volunteer.insurance_valid ? (
+                            <>
+                              <CheckCircle className="w-4 h-4 text-emerald-500" />
+                              <span className="text-xs text-muted-foreground">
+                                Exp: {volunteer.insurance_expiry || 'N/A'}
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <AlertTriangle className="w-4 h-4 text-red-500" />
+                              <span className="text-xs text-red-600 font-medium">EXPIRED</span>
+                            </>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell className="font-medium">{volunteer.hours_contributed}</TableCell>
+                      <TableCell>
+                        <Badge className={
+                          volunteer.status === 'active' ? 'status-active' : 'status-restricted'
+                        }>
+                          {volunteer.status}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+              <Pagination
+                page={page}
+                totalPages={volunteersData.pagination.totalPages}
+                total={volunteersData.pagination.total}
+                onPageChange={setPage}
+                className="mt-4"
+              />
+            </>
+          ) : (
+            <EmptyTable
+              title="No volunteers found"
+              description={searchQuery ? "Try adjusting your search" : "Register your first volunteer to get started"}
+            />
+          )}
         </CardContent>
       </Card>
     </div>
