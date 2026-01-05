@@ -62,9 +62,7 @@ export default function Contacts() {
     10
   );
 
-  const handleViewContact = (contact: Contact) => {
-    setSelectedContact(contact);
-  };
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   const handleAddContact = () => {
     toast({
@@ -72,8 +70,6 @@ export default function Contacts() {
       description: "Opening contact form...",
     });
   };
-
-  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
 
   return (
     <div className="space-y-6">
